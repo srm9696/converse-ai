@@ -30,7 +30,8 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, ApiKeyAuthenticationFilter apiKeyAuthenticationFilter)
 			throws Exception {
-		http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+		// Stateless JSON API: no browser session / form posts; CSRF would block automated clients and tests.
+		http.csrf(csrf -> csrf.disable())
 				.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth

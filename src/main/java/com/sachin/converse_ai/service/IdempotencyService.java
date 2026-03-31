@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -24,9 +25,7 @@ public class IdempotencyService {
 
 	public sealed interface Gate permits Proceed, Completed, InProgress, Failed {}
 
-	public enum Proceed implements Gate {
-		INSTANCE
-	}
+	public record Proceed(UUID conversationId) implements Gate {}
 
 	public record Completed(ConversationMessageResponse response) implements Gate {}
 
@@ -38,18 +37,73 @@ public class IdempotencyService {
 		INSTANCE
 	}
 
-	@Transactional
-	public Gate beginOrResolve(UUID userId, User user, String idempotencyKey, UUID conversationId) {
-		String normalizedKey = idempotencyKey.strip();
-		if (normalizedKey.isEmpty()) {
-			throw new IdempotencyConflictException("Idempotency-Key must not be blank");
+	/**
+	 * Create flow: if a record already exists for this key, it is evaluated against the conversation id stored
+	 * for that key (a fresh random UUID must not be generated first, otherwise retries look like a “different
+	 * conversation” collision).
+	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public Gate prepareCreateConversation(UUID userId, User user, String idempotencyKey) {
+		String normalizedKey = normalizeKey(idempotencyKey);
+		Optional<IdempotentRequest> existing =
+				idempotentRequestRepository.findByUser_IdAndIdempotencyKey(userId, normalizedKey);
+		if (existing.isPresent()) {
+			return mapExisting(existing.get(), existing.get().getConversationId());
 		}
+		return insertNewCreateClaimLoop(userId, user, normalizedKey);
+	}
 
+	/**
+	 * Append flow: the path conversation id is part of the idempotency scope and must match any existing row.
+	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public Gate prepareAppendMessage(UUID userId, User user, String idempotencyKey, UUID conversationId) {
+		String normalizedKey = normalizeKey(idempotencyKey);
+		Optional<IdempotentRequest> existing =
+				idempotentRequestRepository.findByUser_IdAndIdempotencyKey(userId, normalizedKey);
+		if (existing.isPresent()) {
+			return mapExisting(existing.get(), conversationId);
+		}
+		return insertNewAppendClaimLoop(userId, user, normalizedKey, conversationId);
+	}
+
+	private Gate insertNewCreateClaimLoop(UUID userId, User user, String normalizedKey) {
 		while (true) {
-			Optional<IdempotentRequest> existing =
+			Optional<IdempotentRequest> racing =
 					idempotentRequestRepository.findByUser_IdAndIdempotencyKey(userId, normalizedKey);
-			if (existing.isPresent()) {
-				return mapExisting(existing.get(), conversationId);
+			if (racing.isPresent()) {
+				return mapExisting(racing.get(), racing.get().getConversationId());
+			}
+
+			UUID conversationId = UUID.randomUUID();
+			Instant now = Instant.now();
+			IdempotentRequest row = new IdempotentRequest(
+					UUID.randomUUID(),
+					user,
+					normalizedKey,
+					conversationId,
+					IdempotencyStatus.IN_PROGRESS,
+					null,
+					null,
+					null,
+					null,
+					now,
+					now);
+			try {
+				idempotentRequestRepository.saveAndFlush(row);
+				return new Proceed(conversationId);
+			} catch (DataIntegrityViolationException e) {
+				// Concurrent claim on the same (userId, idempotencyKey); retry resolution.
+			}
+		}
+	}
+
+	private Gate insertNewAppendClaimLoop(UUID userId, User user, String normalizedKey, UUID conversationId) {
+		while (true) {
+			Optional<IdempotentRequest> racing =
+					idempotentRequestRepository.findByUser_IdAndIdempotencyKey(userId, normalizedKey);
+			if (racing.isPresent()) {
+				return mapExisting(racing.get(), conversationId);
 			}
 
 			Instant now = Instant.now();
@@ -67,11 +121,19 @@ public class IdempotencyService {
 					now);
 			try {
 				idempotentRequestRepository.saveAndFlush(row);
-				return Proceed.INSTANCE;
+				return new Proceed(conversationId);
 			} catch (DataIntegrityViolationException e) {
 				// Concurrent claim on the same (userId, idempotencyKey); retry resolution.
 			}
 		}
+	}
+
+	private String normalizeKey(String idempotencyKey) {
+		String normalizedKey = idempotencyKey.strip();
+		if (normalizedKey.isEmpty()) {
+			throw new IdempotencyConflictException("Idempotency-Key must not be blank");
+		}
+		return normalizedKey;
 	}
 
 	private Gate mapExisting(IdempotentRequest row, UUID expectedConversationId) {
@@ -101,7 +163,7 @@ public class IdempotencyService {
 		};
 	}
 
-	@Transactional
+	@Transactional(propagation = Propagation.MANDATORY)
 	public void markCompleted(UUID userId, String idempotencyKey, ConversationMessageResponse response) {
 		IdempotentRequest row = idempotentRequestRepository
 				.findByUser_IdAndIdempotencyKey(userId, idempotencyKey.strip())
@@ -114,7 +176,7 @@ public class IdempotencyService {
 		row.setUpdatedAt(Instant.now());
 	}
 
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void markFailed(UUID userId, String idempotencyKey, String errorCode) {
 		Optional<IdempotentRequest> row =
 				idempotentRequestRepository.findByUser_IdAndIdempotencyKey(userId, idempotencyKey.strip());

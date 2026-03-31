@@ -46,10 +46,9 @@ public class ConversationApplicationService {
 	public ConversationMessageResponse createConversationWithFirstMessage(
 			UUID userId, String idempotencyKey, String messageText) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-		UUID conversationId = UUID.randomUUID();
 		Instant now = Instant.now();
 
-		IdempotencyService.Gate gate = idempotencyService.beginOrResolve(userId, user, idempotencyKey, conversationId);
+		IdempotencyService.Gate gate = idempotencyService.prepareCreateConversation(userId, user, idempotencyKey);
 		if (gate instanceof IdempotencyService.Completed completed) {
 			return completed.response();
 		}
@@ -61,6 +60,11 @@ public class ConversationApplicationService {
 			throw new IdempotencyFailedKeyException(
 					"This Idempotency-Key already failed. Submit a new Idempotency-Key to retry.");
 		}
+
+		if (!(gate instanceof IdempotencyService.Proceed proceed)) {
+			throw new IllegalStateException("Unexpected idempotency gate: " + gate.getClass().getName());
+		}
+		UUID conversationId = proceed.conversationId();
 
 		try {
 			Conversation conversation = new Conversation(conversationId, user, now);
@@ -86,7 +90,8 @@ public class ConversationApplicationService {
 				.orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
 		Instant now = Instant.now();
 
-		IdempotencyService.Gate gate = idempotencyService.beginOrResolve(userId, user, idempotencyKey, conversation.getId());
+		IdempotencyService.Gate gate =
+				idempotencyService.prepareAppendMessage(userId, user, idempotencyKey, conversation.getId());
 		if (gate instanceof IdempotencyService.Completed completed) {
 			return completed.response();
 		}
@@ -97,6 +102,10 @@ public class ConversationApplicationService {
 		if (gate instanceof IdempotencyService.Failed) {
 			throw new IdempotencyFailedKeyException(
 					"This Idempotency-Key already failed. Submit a new Idempotency-Key to retry.");
+		}
+
+		if (!(gate instanceof IdempotencyService.Proceed)) {
+			throw new IllegalStateException("Unexpected idempotency gate: " + gate.getClass().getName());
 		}
 
 		try {
