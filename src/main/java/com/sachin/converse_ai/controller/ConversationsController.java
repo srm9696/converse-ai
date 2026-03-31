@@ -3,6 +3,7 @@ package com.sachin.converse_ai.controller;
 import com.sachin.converse_ai.dto.ConversationHistoryItem;
 import com.sachin.converse_ai.dto.ConversationMessageRequest;
 import com.sachin.converse_ai.dto.ConversationMessageResponse;
+import com.sachin.converse_ai.service.ConversationApplicationService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Objects;
@@ -25,32 +26,36 @@ public class ConversationsController {
 	public static final String HEADER_API_KEY = "X-Api-Key";
 	public static final String HEADER_IDEMPOTENCY_KEY = "Idempotency-Key";
 
+	private final ConversationApplicationService conversationApplicationService;
+
+	public ConversationsController(ConversationApplicationService conversationApplicationService) {
+		this.conversationApplicationService = conversationApplicationService;
+	}
+
 	@PostMapping
-	@ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
+	@ResponseStatus(HttpStatus.CREATED)
 	public ConversationMessageResponse createConversation(
 			@AuthenticationPrincipal UUID userId,
 			@RequestHeader(HEADER_IDEMPOTENCY_KEY) String idempotencyKey,
 			@Valid @RequestBody ConversationMessageRequest request) {
 		Objects.requireNonNull(userId, "userId");
-		throw new UnsupportedOperationException("Not implemented yet");
+		return conversationApplicationService.createConversationWithFirstMessage(userId, idempotencyKey, request.message());
 	}
 
 	@PostMapping("/{conversationId}/messages")
-	@ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
 	public ConversationMessageResponse appendMessage(
 			@AuthenticationPrincipal UUID userId,
 			@RequestHeader(HEADER_IDEMPOTENCY_KEY) String idempotencyKey,
 			@PathVariable UUID conversationId,
 			@Valid @RequestBody ConversationMessageRequest request) {
 		Objects.requireNonNull(userId, "userId");
-		throw new UnsupportedOperationException("Not implemented yet");
+		return conversationApplicationService.appendAssistantReply(userId, conversationId, idempotencyKey, request.message());
 	}
 
 	@GetMapping("/{conversationId}/messages")
-	@ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
 	public List<ConversationHistoryItem> getHistory(
 			@AuthenticationPrincipal UUID userId, @PathVariable UUID conversationId) {
 		Objects.requireNonNull(userId, "userId");
-		throw new UnsupportedOperationException("Not implemented yet");
+		return conversationApplicationService.loadHistory(userId, conversationId);
 	}
 }
