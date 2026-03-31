@@ -1,7 +1,7 @@
 package com.sachin.converse_ai.config;
 
-import com.sachin.converse_ai.domain.ApiKey;
-import com.sachin.converse_ai.domain.User;
+import com.sachin.converse_ai.dao.ApiKey;
+import com.sachin.converse_ai.dao.User;
 import com.sachin.converse_ai.repository.ApiKeyRepository;
 import com.sachin.converse_ai.repository.UserRepository;
 import java.time.Instant;

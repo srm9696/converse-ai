@@ -1,4 +1,4 @@
-package com.sachin.converse_ai.api;
+package com.sachin.converse_ai.dto;
 
 import java.time.Instant;
 
@@ -7,4 +7,3 @@ public record ErrorResponse(String code, String message, Instant timestamp) {
 		return new ErrorResponse(code, message, Instant.now());
 	}
 }
-

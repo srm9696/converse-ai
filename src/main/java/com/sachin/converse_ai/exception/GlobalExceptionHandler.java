@@ -1,5 +1,6 @@
-package com.sachin.converse_ai.api;
+package com.sachin.converse_ai.exception;
 
+import com.sachin.converse_ai.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,4 +16,3 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of("VALIDATION_ERROR", "Request validation failed"));
 	}
 }
-

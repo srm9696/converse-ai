@@ -1,4 +1,4 @@
-package com.sachin.converse_ai.domain;
+package com.sachin.converse_ai.dao;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -130,4 +130,3 @@ public class IdempotentRequest {
 		return updatedAt;
 	}
 }
-

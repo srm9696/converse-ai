@@ -1,5 +1,8 @@
-package com.sachin.converse_ai.api;
+package com.sachin.converse_ai.controller;
 
+import com.sachin.converse_ai.dto.ConversationHistoryItem;
+import com.sachin.converse_ai.dto.ConversationMessageRequest;
+import com.sachin.converse_ai.dto.ConversationMessageResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -46,4 +49,3 @@ public class ConversationsController {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 }
-

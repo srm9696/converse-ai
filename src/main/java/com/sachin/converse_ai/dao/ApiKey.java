@@ -1,4 +1,4 @@
-package com.sachin.converse_ai.domain;
+package com.sachin.converse_ai.dao;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,8 +12,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "conversation")
-public class Conversation {
+@Table(name = "api_key")
+public class ApiKey {
 
 	@Id
 	@Column(name = "id", nullable = false, updatable = false)
@@ -24,18 +24,26 @@ public class Conversation {
 			name = "user_id",
 			nullable = false,
 			updatable = false,
-			foreignKey = @ForeignKey(name = "fk_conversation_user"))
+			foreignKey = @ForeignKey(name = "fk_api_key_user"))
 	private User user;
+
+	@Column(name = "api_key_hash", nullable = false, updatable = false, length = 100)
+	private String apiKeyHash;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
-	protected Conversation() {}
+	@Column(name = "revoked_at")
+	private Instant revokedAt;
 
-	public Conversation(UUID id, User user, Instant createdAt) {
+	protected ApiKey() {}
+
+	public ApiKey(UUID id, User user, String apiKeyHash, Instant createdAt, Instant revokedAt) {
 		this.id = id;
 		this.user = user;
+		this.apiKeyHash = apiKeyHash;
 		this.createdAt = createdAt;
+		this.revokedAt = revokedAt;
 	}
 
 	public UUID getId() {
@@ -46,8 +54,15 @@ public class Conversation {
 		return user;
 	}
 
+	public String getApiKeyHash() {
+		return apiKeyHash;
+	}
+
 	public Instant getCreatedAt() {
 		return createdAt;
 	}
-}
 
+	public Instant getRevokedAt() {
+		return revokedAt;
+	}
+}
