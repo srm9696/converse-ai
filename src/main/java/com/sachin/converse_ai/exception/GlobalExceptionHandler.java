@@ -25,6 +25,18 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of("NOT_FOUND", ex.getMessage()));
 	}
 
+	@ExceptionHandler(IdempotencyConflictException.class)
+	public ResponseEntity<ErrorResponse> handleIdempotencyConflict(IdempotencyConflictException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of("IDEMPOTENCY_CONFLICT", ex.getMessage()));
+	}
+
+	@ExceptionHandler(IdempotencyFailedKeyException.class)
+	public ResponseEntity<ErrorResponse> handleIdempotencyFailedKey(IdempotencyFailedKeyException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of("IDEMPOTENCY_FAILED_KEY", ex.getMessage()));
+	}
+
 	@ExceptionHandler(LlmInvocationFailedException.class)
 	public ResponseEntity<ErrorResponse> handleLlmFailure(LlmInvocationFailedException ex) {
 		if (findCause(ex, TimeoutException.class) != null) {

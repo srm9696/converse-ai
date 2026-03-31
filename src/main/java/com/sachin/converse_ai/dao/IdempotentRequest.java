@@ -56,6 +56,9 @@ public class IdempotentRequest {
 	@Column(name = "assistant_message", length = 8000)
 	private String assistantMessage;
 
+	@Column(name = "assistant_created_at")
+	private Instant assistantCreatedAt;
+
 	@Column(name = "error_code", length = 100)
 	private String errorCode;
 
@@ -75,6 +78,7 @@ public class IdempotentRequest {
 			IdempotencyStatus status,
 			UUID assistantMessageId,
 			String assistantMessage,
+			Instant assistantCreatedAt,
 			String errorCode,
 			Instant createdAt,
 			Instant updatedAt) {
@@ -85,6 +89,7 @@ public class IdempotentRequest {
 		this.status = status;
 		this.assistantMessageId = assistantMessageId;
 		this.assistantMessage = assistantMessage;
+		this.assistantCreatedAt = assistantCreatedAt;
 		this.errorCode = errorCode;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
@@ -118,6 +123,10 @@ public class IdempotentRequest {
 		return assistantMessage;
 	}
 
+	public Instant getAssistantCreatedAt() {
+		return assistantCreatedAt;
+	}
+
 	public String getErrorCode() {
 		return errorCode;
 	}
@@ -128,5 +137,29 @@ public class IdempotentRequest {
 
 	public Instant getUpdatedAt() {
 		return updatedAt;
+	}
+
+	public void setStatus(IdempotencyStatus status) {
+		this.status = status;
+	}
+
+	public void setAssistantMessageId(UUID assistantMessageId) {
+		this.assistantMessageId = assistantMessageId;
+	}
+
+	public void setAssistantMessage(String assistantMessage) {
+		this.assistantMessage = assistantMessage;
+	}
+
+	public void setAssistantCreatedAt(Instant assistantCreatedAt) {
+		this.assistantCreatedAt = assistantCreatedAt;
+	}
+
+	public void setErrorCode(String errorCode) {
+		this.errorCode = errorCode;
+	}
+
+	public void setUpdatedAt(Instant updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 }
