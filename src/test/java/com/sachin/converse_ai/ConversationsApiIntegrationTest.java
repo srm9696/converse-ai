@@ -96,6 +96,32 @@ class ConversationsApiIntegrationTest {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void appendMessage_returnsAssistantReplyBasedOnRequestMessage() throws Exception {
+		String createIdempotencyKey = UUID.randomUUID().toString();
+		MvcResult created =
+				mockMvc.perform(post("/api/conversations")
+								.header("X-Api-Key", TEST_API_KEY)
+								.header("Idempotency-Key", createIdempotencyKey)
+								.contentType(MediaType.APPLICATION_JSON)
+								.content("{\"message\":\"Hi\"}"))
+						.andExpect(status().isCreated())
+						.andExpect(jsonPath("$.conversationId").exists())
+						.andReturn();
+
+		String conversationId = readJsonString(created, "$.conversationId");
+
+		String appendIdempotencyKey = UUID.randomUUID().toString();
+		mockMvc.perform(post("/api/conversations/{cid}/messages", conversationId)
+						.header("X-Api-Key", TEST_API_KEY)
+						.header("Idempotency-Key", appendIdempotencyKey)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"message\":\"2nd message\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.conversationId").value(conversationId.toString()))
+				.andExpect(jsonPath("$.assistantMessage").value("Mock assistant reply to: 2nd message"));
+	}
+
 	private static String readJsonString(MvcResult result, String jsonPath) throws Exception {
 		return JsonPath.read(result.getResponse().getContentAsString(), jsonPath).toString();
 	}

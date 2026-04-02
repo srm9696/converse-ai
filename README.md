@@ -35,31 +35,47 @@ Seeded rows come from `src/main/resources/data.sql`, with a programmatic fallbac
 
 ### Example requests
 
+#### Postman setup (recommended)
+
+For **every POST request** in Postman (create conversation + append message), generate a fresh `Idempotency-Key` so you don’t accidentally replay an older stored response.
+
+Add this **Pre-request Script** to each POST request:
+
+```javascript
+pm.environment.set("IDEMPOTENCY_KEY", pm.variables.replaceIn("{{$guid}}"));
+```
+
+Then add these headers to the request:
+
+- `X-Api-Key`: `test-api-key-001`
+- `Idempotency-Key`: `{{IDEMPOTENCY_KEY}}`
+
 Create a conversation (returns `201 Created`):
 
 ```bash
 curl -sS -X POST 'http://localhost:8080/api/conversations' \
-  -H 'Content-Type: application/json' \
-  -H 'X-Api-Key: test-api-key-001' \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"message":"Hello"}'
+  --header 'Content-Type: application/json' \
+  --header 'X-Api-Key: test-api-key-001' \
+  --header 'Idempotency-Key: {{IDEMPOTENCY_KEY}}' \
+  --data '{"message":"Hello"}'
 ```
 
 Append a message:
 
 ```bash
 curl -sS -X POST "http://localhost:8080/api/conversations/${CONVERSATION_ID}/messages" \
-  -H 'Content-Type: application/json' \
-  -H 'X-Api-Key: test-api-key-001' \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"message":"Follow-up"}'
+  --header 'Content-Type: application/json' \
+  --header 'X-Api-Key: test-api-key-001' \
+  --header 'Idempotency-Key: {{IDEMPOTENCY_KEY}}' \
+  --data '{"message":"Follow-up"}'
 ```
+Note: use a fresh `Idempotency-Key` value per request, otherwise the server may replay an earlier assistant message.
 
 Fetch history (messages ordered oldest → newest):
 
 ```bash
 curl -sS -X GET "http://localhost:8080/api/conversations/${CONVERSATION_ID}/messages" \
-  -H 'X-Api-Key: test-api-key-001'
+  --header 'X-Api-Key: test-api-key-001'
 ```
 
 ## Project layout (layered)
